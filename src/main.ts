@@ -6,11 +6,10 @@ function checkCapability(): boolean {
   if (navigator.gpu) {
     console.log('WebGPU is supported');
     return true;
-  } else if (navigator.gpu) {
+  } else {
     console.error('WebGPU is not supported');
+    return false;
   }
-
-  return false;
 }
 
 async function initialize() {
@@ -25,13 +24,27 @@ async function initialize() {
     return;
   }
   const format: GPUTextureFormat = 'bgra8unorm';
-  const alphaMode: GPUCanvasAlphaMode = 'premultiplied';
+  const alphaMode: GPUCanvasAlphaMode = 'opaque';
 
   context.configure({
     device,
     format,
     alphaMode,
   });
+
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [],
+  });
+
+  const bindGroup = device.createBindGroup({
+    layout: bindGroupLayout,
+    entries: [],
+  });
+
+  const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [bindGroupLayout],
+  });
+
   const pipeline = device.createRenderPipeline({
     vertex: {
       module: device.createShaderModule({
@@ -51,12 +64,11 @@ async function initialize() {
     primitive: {
       topology: 'triangle-list',
     },
-    layout: 'auto',
+    layout: pipelineLayout,
   });
 
   const commandEncoder: GPUCommandEncoder = device.createCommandEncoder();
   const textureView: GPUTextureView = context.getCurrentTexture().createView();
-
   const renderPass: GPURenderPassEncoder = commandEncoder.beginRenderPass({
     colorAttachments: [
       {
@@ -68,6 +80,7 @@ async function initialize() {
     ],
   });
   renderPass.setPipeline(pipeline);
+  renderPass.setBindGroup(0, bindGroup);
   renderPass.draw(3, 1, 0, 0);
   renderPass.end();
 
